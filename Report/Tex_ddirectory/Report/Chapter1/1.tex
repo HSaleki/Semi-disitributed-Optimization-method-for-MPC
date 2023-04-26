@@ -1,0 +1,293 @@
+\section{}
+\begin{spacing}{1.25}
+Consider the following problem \\
+    \[
+        \min_x \sum\limits_{i \in I} f_{i}(x_{i}) \quad s.t. \quad
+        \begin{cases} & g_i(x_i) = 0\:,\ \  i \in \bigl\{ 1,\ldots,N \bigr\}\\
+        & \sum\limits_{i \in I} A_{i} x_{i} = b
+        \end{cases}
+    \]\\
+    where $x_i \in \mathbb{R}^{n_x}$, $f_i : \mathbb{R}^{n_x} \rightarrow \mathbb{R}$, $g_i : \mathbb{R}^{n_x} \rightarrow \mathbb{R}^{n_g}$, and $A_i \in \mathbb{R}^{n_A \times n_x}$ \\
+    Our aim is to exploit the structure of problem to distribute computations on local level as much as possible, as opposed to decomposing the problem,\\
+    If we associate multipliers $\lambda_i \in \mathbb{R}^{n_g}$ with $g_i$ and $\mu \in \mathbb{R}^{n_A}$, we will have the following Lagrangian and its derivatives:
+\end{spacing}
+
+\[
+L(x,\lambda,\mu) = \sum\limits_{i \in I} f_{i}(x_{i}) + \lambda_{i}^{T} g_i(x_i) + \mu^T (\sum\limits_{i \in I} A_{i} x_{i} - b)
+\]
+\[
+\nabla L(x,\lambda,\mu) =   
+   \begin{bmatrix}
+   [\nabla L(x,\lambda,\mu)]_1 \\
+   \vdots \\
+   [\nabla L(x,\lambda,\mu)]_N 
+   \end{bmatrix}
+\]
+and
+\[
+[\nabla L(x,\lambda,\mu)]_i = \nabla_{x_i} f_i(x_i) + \nabla_{x_i} g_i(x_i)^{T} \lambda_i + A_{i}^{T} \mu
+\]
+where $\nabla g$ is the Jacobian of the corresponding function. \\
+
+Therefore to find the minimizer we solve the following problem;
+ \[
+        \nabla L(x,\lambda,\mu) = 0 \quad s.t. \quad
+        \begin{cases} & g_i(x_i) = 0\:,\ \  i \in \bigl\{ 1,\ldots,N \bigr\}\\
+        & \sum\limits_{i \in I} A_{i} x_{i} = b
+        \end{cases}
+    \]\\
+
+Presuming regularity, solving this problem using the Newton method will result in the following system of equations.
+
+\begin{equation} \label{eqn:1}
+    \begin{bmatrix}
+        KKT
+    \end{bmatrix} 
+    \begin{bmatrix}
+       \Delta x \\
+       \Delta \lambda \\
+       \Delta \mu
+    \end{bmatrix} = -
+   \begin{bmatrix}
+   \nabla L(x,\lambda,\mu) \\
+   \vdots \\
+   g_i(x_i) \\
+   \vdots \\
+   \sum\limits_{i \in I} A_{i} x_{i} - b
+   \end{bmatrix}
+\end{equation}  
+
+Where $\Delta x$ is a vector of size $N \times n_x$, $\Delta \lambda$ is of size $N \times n_g$ and $\Delta \mu$ of size $n_A$ with the following KKT matrix;
+
+\[
+KKT = \begin{bmatrix}
+    \begin{bmatrix}
+        \ddots & & \\
+        & \nabla_{x_i}^2 f_i(x_i) + <\lambda_i, \nabla_{x_I}^2 g_i(x_i)> & \\
+        & & \ddots
+    \end{bmatrix} &
+    \begin{bmatrix}
+        \ddots & & \\
+        & \nabla_{x_i} g_i(x_i)^T & \\
+        & & \ddots
+    \end{bmatrix} &
+    \begin{bmatrix}
+        \vdots \\
+        A_i^T \\
+        \vdots
+    \end{bmatrix} \\
+     \begin{bmatrix}
+        \ddots & & \\
+        & \nabla_{x_i} g_i(x_i) & \\
+        & & \ddots
+    \end{bmatrix} &
+    \begin{bmatrix}
+        0
+    \end{bmatrix} &
+    \begin{bmatrix}
+        0
+    \end{bmatrix} \\
+     \begin{bmatrix}
+        & \hdots & A_i & \hdots & \\
+    \end{bmatrix} &
+    \begin{bmatrix}
+        0
+    \end{bmatrix} &
+    \begin{bmatrix}
+        0
+    \end{bmatrix} 
+\end{bmatrix}
+\]
+
+The matrix containing Hessian of the Lagrangian consists of N blocks of size $n_x \times n_x$, block containing the Jacobian of $g_i$s, has N blocks of $n_x \times n_g$ and the block containing $A_i^{T}$ has N matrices of size $n_x \times n_A$.\\
+
+Let us denote $\nabla_{x_i}^2 f_i(x_i) + <\lambda_i, \nabla_{x_I}^2 g_i(x_i)>$ with $D_i$ and the matrix containing them $\mathbf{D}$, $ \nabla L(x,\lambda,\mu)$ as $r_1$, $g(x)$ as $r_2$, and $ \sum\limits_{i \in I} A_{i} x_{i} - b $ as $r_3$ in the right hand side of \ref{eqn:1}. Then we can solve for $\Delta x$:
+
+\begin{align*}
+& D \Delta x + \nabla g^T \Delta \lambda + A^T \Delta \mu = - r_1 \\
+& \Delta x = - D^{-1} r_1 - D^{-1} \begin{bmatrix}
+    \nabla g^T & A^T
+\end{bmatrix}
+\begin{bmatrix}
+    \Delta \lambda \\
+    \Delta \mu
+\end{bmatrix}
+\end{align*}
+
+Where due to the structure of the KKT matrix can be solved for each $x_i$ seperately.
+\[
+\Delta x_i = - D_i^{-1} r_{1_i} - D_i^{-1} \begin{bmatrix}
+\nabla_{x_i} g_i(x_i)^T & A_i^T
+\end{bmatrix}
+\begin{bmatrix}
+    \Delta \lambda_i \\
+    \Delta \mu
+\end{bmatrix}
+\]
+    
+We will proceed with modifying the right hand side of \ref{eqn:1} and the KKT matrix.
+
+\[\Bar{r}_2 = r_2 - \nabla g D^{-1} r_1\]
+\[\Bar{r}_3 = r_3 - A D^{-1} r_1\]
+\[
+a = - \nabla g D^{-1} \nabla g^T
+\]
+\[
+b = - \nabla g D^{-1} A^T
+\]
+\[
+c = - A D^{-1} \nabla g^T
+\]
+\[
+d = - A D^{-1} A^T
+\]
+
+ where $a$ is block diagonal. The modified system will be:
+ \[
+ \begin{bmatrix}
+     a & b\\
+     c & d\\
+ \end{bmatrix}
+ \begin{bmatrix}
+     \Delta \lambda \\
+     \Delta \mu
+ \end{bmatrix} = -
+ \begin{bmatrix}
+     \Bar{r}_2 \\
+     \Bar{r}_3
+ \end{bmatrix}
+ \]
+
+which can be solved by following:
+
+\[
+\Delta \mu = (d - ca^{-1} b)^{-1} (c a^{-1} \Bar{r_2} - \Bar{r_3})
+\]    
+\[
+\Delta \lambda = a^{-1} (- \Bar{r_2} - b \Delta \mu)
+\]
+
+For example consider the following:
+
+    \[
+        \min_x \: \frac{1}{2} x_1^T Q_1 x_1 + \frac{1}{2} x_2^T Q_2 x_2  \quad s.t. \quad
+        \begin{cases} A_1 x_1 = b_1\\
+        A_2 x_2 = b_2\\
+        C_1 x_1 = C_2 x_2
+        \end{cases}
+    \]
+
+We will have the following Lagrangian and its gradient.
+\[
+L(x,\lambda_1,\lambda_2,\mu) = \frac{1}{2} x_1^T Q_1 x_1 + \frac{1}{2} x_2^T Q_2 x_2 + \lambda_1^T (A_1 x_1 - b_1) +
+\lambda_2^T (A_2 x_2 - b_2) + + \mu^T (C_1 x_1 - C_2 x_2)
+\]
+\[
+\nabla L(x,\lambda_1,\lambda_2,\mu) = \begin{bmatrix}
+    Q_1 x_1 + A_1^T \lambda_1 + C_1^T \mu \\
+    Q_2 x_2 + A_2^T \lambda_2 - C_2^T \mu
+\end{bmatrix}
+\]
+
+As these equations are linear, Newton step is not necessary and we have the following system of equations:
+\[
+\begin{bmatrix}
+    Q_1 & 0 & A_1^T & 0 & C_1^T \\
+    0 & Q_2 & 0 & A_2^T & -C_2^T \\
+    A_1 & 0 & 0 & 0 & 0 \\
+    0 & A_2 & 0 & 0 & 0 \\
+    C_1 & -C_2 & 0 & 0 & 0
+\end{bmatrix}
+\begin{bmatrix}
+    x \\
+    \lambda \\
+    \mu
+\end{bmatrix} = 
+\begin{bmatrix}
+    0 \\
+    0 \\
+    b_1 \\
+    b_2 \\
+    0
+\end{bmatrix}
+\]
+
+\begin{equation}{\label{eq.1}}
+    x = - \begin{bmatrix}
+    Q_1 & 0 \\
+    0 & Q_2 
+\end{bmatrix}^{-1} \begin{bmatrix}
+    A_1^T & 0 & C_1^T\\
+    0 & A_2^T & -C_2^T
+\end{bmatrix}
+\begin{bmatrix}
+    \lambda \\
+    \mu
+\end{bmatrix}
+\end{equation}
+\[
+\Bar{r_2} = \begin{bmatrix}
+    b_1 \\
+    b_2 
+\end{bmatrix}
+\]
+\[
+\Bar{r_3} = 0
+\]
+\[ a =  
+\begin{bmatrix}
+     A_1 Q_1^{-1} A_1 ^T & 0 \\
+     0 & A_2 Q_2^{-1} A_2^T 
+ \end{bmatrix}
+\]
+\[ b = 
+\begin{bmatrix}
+    A_1 Q_1^{-1} C_1^T \\
+    - A_2 Q_2^{-1} C_2^T
+\end{bmatrix}
+\]
+\[ c = 
+\begin{bmatrix}
+    C_1 Q_1^{-1} A_1^T & -C_2 Q_2^{-1} A_2^T
+\end{bmatrix}
+\]
+\[ d =  ( C_1 Q_1^{-1} C_1^{T} + C_2 Q_2^{-1} C_2^T )
+\]
+
+\[
+\begin{bmatrix}
+    -A_1 Q_1^{-1} A_1 ^T & 0 & -A_1 Q_1^{-1} C_1^T \\
+    0 & -A_2 Q_2^{-1} A_2^T &  A_2 Q_2^{-1} C_2^T\\
+    -C_1 Q_1^{-1} A_1^T & C_2 Q_2^{-1} A_2^T &  -( C_1 Q_1^{-1} C_1^{T} + C_2 Q_2^{-1} C_2^T )
+\end{bmatrix}
+\begin{bmatrix}
+    \lambda \\ 
+    \mu
+\end{bmatrix} =  
+\begin{bmatrix}
+    \Bar{r_2} \\
+    \Bar{r_3}
+\end{bmatrix}
+\]
+
+\begin{equation}{\label{eq.2}}
+     \mu = - (d - ca^{-1} b)^{-1} (c a^{-1} \Bar{r_2} - \Bar{r_3})
+\end{equation}
+
+\begin{equation}{\label{eq.3}}
+     \lambda = a^{-1} (- \Bar{r_2} - b \Delta \mu)
+\end{equation}
+
+Which is solved by the following algorithm. 
+
+\begin{algorithm}
+    \caption{Basic distributed algorithm for linear quadratic problem}
+  \begin{algorithmic}[1]
+    \INPUT Problem parameters $Q_i$, $A_i$, $b_i$, and $C_i$
+    \OUTPUT $x_i$, $\lambda_i$, and $\mu$
+      \STATE $\forall i$ : Compute $A_i Q_{i}^{-1}A_{i}^{T}$, $A_i Q_{i}^{-1}C_{i}^{T}$ and send them to $\lambda_i$, compute $C_I Q_{i}^{-1}A_{i}^{T}$, $C_i Q_{i}^{-1}C_{i}^{T}$ and send it to $\mu$
+      \STATE Compute $\mu$ from \ref{eq.2} and send it to $\lambda_i$
+      \STATE Compute $\lambda_i$ from \ref{eq.3} and send it to $x_i$
+      \STATE Solve for $x_i$ from \ref{eq.1}
+  \end{algorithmic}
+\end{algorithm}

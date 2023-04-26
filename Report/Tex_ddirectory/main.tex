@@ -1,0 +1,21 @@
+\input{setup/packages}
+
+\begin{document}
+% fill in this document
+\input{Report-info}
+
+    \input{setup/titlepage}
+   % \toc
+    \vspace{2cm}
+    \ifthenelse{\equal{\Reportnr}{}}{
+        % single Report
+        \input{Report/all}
+    }{
+        % one from series
+        \input{Report/Chapter\Reportnr/all}
+    }
+    
+    % uncomment next line if using references
+    %\printbibliography
+
+\end{document}
