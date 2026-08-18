@@ -150,6 +150,4 @@ only. The example additionally needs the Control System Toolbox (`dlqr`) and the
 Toolbox (`quadprog`) — the latter purely as an independent reference; the solver does not call it.
 
 
-## License
-
 See `LICENSE`.
