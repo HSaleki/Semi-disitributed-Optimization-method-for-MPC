@@ -173,10 +173,9 @@ the exact call.
 
 This is a *simulation* of a distributed algorithm, not a distributed deployment. The local and
 central nodes are objects in one process; "sending" is a method call, and the logger counts the
-array elements that would cross a wire. What the code demonstrates is the information structure —
+array elements that is communicated between nodes. What the code demonstrates is the information structure —
 each agent reveals only $(S_i, \rho_i, A_i\Delta x_i, \Delta\tau_i)$, never its cost or private
-constraints — and the resulting $\mathcal{O}(Mm^2)$ message volume. A real deployment would replace
-the messaging methods with a transport layer; the algorithm is synchronous.
+constraints — and the resulting $\mathcal{O}(Mm^2)$ message volume. 
 
 ## Citation
 
