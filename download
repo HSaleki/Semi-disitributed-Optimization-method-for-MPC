@@ -1,0 +1,20 @@
+# MATLAB
+*.asv
+*.m~
+*.mex*
+*.mat
+slprj/
+codegen/
+
+# figures / generated output
+*.fig
+*.png
+*.pdf
+*.eps
+results/
+
+# editors / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
