@@ -1,4 +1,4 @@
-# Distributed Active-Set QP Solver
+# Distributed Active-Set QP Solver for Model Predictive Control
 
 A primal active-set solver for coupled convex QPs, split across one central node and $M$ local
 nodes. Coupling is eliminated by a Schur complement assembled from local contributions; the
