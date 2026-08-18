@@ -1,23 +1,18 @@
 """
 Distributed active-set QP solver.
 
+This is the Python port of the MATLAB implementation. The problem is
+
     min  sum_i  1/2 z_i' Q_i z_i + p_i' z_i
-    s.t. G_i z_i  = g_i          (local, private)
-         H_i z_i <= h_i          (local, private)
-         sum_i A_i z_i <= b      (coupled)
+    s.t. G_i z_i = g_i
+         H_i z_i <= h_i
+         sum_i A_i z_i <= b
 
-One central node, M local nodes. Each local node factors its own KKT system in
-the null space of its active constraints and ships back only the Schur block
+Local nodes form reduced KKT systems. The central node handles the coupled
+constraints through the sum of the local Schur blocks. The active set is
+followed with a homotopy parameter sigma, starting at 1 and ending at 0.
 
-    S_i = (Z' A_i')' (Z' Q_i Z)^-1 (Z' A_i'),      rho_i = A_i dxbar_i
-
-The central node sums those, solves S dnu = rho - r_b, and broadcasts dnu. The
-active set is traced by a homotopy in sigma from 1 to 0: the data is perturbed
-so the warm start is exactly optimal at sigma = 1, and the perturbation is
-retired linearly. sigma is the state variable (not tau = 1 - sigma) so the
-right-hand sides are recovered bitwise at sigma = 0.
-
-Port of the MATLAB implementation. Requires numpy + scipy.
+Requires numpy and scipy.
 """
 
 import argparse
@@ -31,7 +26,7 @@ TINY = np.finfo(float).tiny
 
 
 def ninf(v):
-    """||v||_inf, with the empty vector mapping to 0 rather than raising."""
+    """Infinity norm helper."""
     v = np.asarray(v)
     return float(np.abs(v).max()) if v.size else 0.0
 
@@ -39,12 +34,9 @@ def ninf(v):
 # ---------------------------------------------------------------- factorization
 
 def seq_qr_rankreveal(A, tol=None):
-    """Sequential Householder QR with a dependence test before each elimination.
+    """Householder QR used for the active constraint matrix.
 
-    Columns are processed in the order given (warm-start order matters: a column
-    that is dependent on the ones before it is skipped, not reordered). Returns
-    the essential Householder vectors V, the multipliers beta, the triangular
-    factor R, a mask of the columns kept, and the rank.
+    Dependent columns are skipped in their original order.
     """
     n, m = A.shape
     if tol is None:
@@ -83,7 +75,7 @@ def seq_qr_rankreveal(A, tol=None):
 
 
 class LDLSolve:
-    """Z'QZ factored once per active-set change; solve() applies the inverse."""
+    """Factorization of the reduced Hessian."""
 
     def __init__(self, M):
         self.n = M.shape[0]
@@ -101,7 +93,7 @@ class LDLSolve:
 # --------------------------------------------------------------------- logging
 
 class Logger:
-    """Counts array elements crossing each interface. Not a transport layer."""
+    """Counts the number of array elements exchanged."""
 
     def __init__(self):
         self.reset()
@@ -174,8 +166,7 @@ class LocalNode:
         self.change_l = False
         self.change_c = False
 
-        # sqrt of the activity tolerance: the smallest slack that keeps a
-        # near-boundary row strictly inactive at sigma = 1 without inflating d_h
+        # Keep nearly active rows slightly away from the boundary.
         self.slack_rel = 1e-6
 
         self.S_i = None
@@ -235,7 +226,7 @@ class LocalNode:
             self._close_uncoupled()
 
     def _factor_local(self):
-        """Y/Z split, reduced Hessian, and the uncoupled step dxbar."""
+        """Build the reduced system and compute the uncoupled step."""
         Qi = np.eye(self.nx)
         for j in range(self.r - 1, -1, -1):
             v = self.V[j:, j]
@@ -276,7 +267,7 @@ class LocalNode:
             self.S_i, self.rho_i = S, rho
 
     def _close_uncoupled(self):
-        """No coupled rows active: the local step is complete on its own."""
+        """No coupled constraints are active."""
         self.s_Z = self.s_Zbar
         self.dx = self.dxbar
         self.YBZs = self.ZBY.T @ self.s_Z
@@ -322,11 +313,8 @@ class LocalNode:
         return ratios[k], idx[k]
 
     def _resolve_dependency(self):
-        """Drop rows until Hz(W,:) has full row rank.
-
-        The leaving row is picked by a dual ratio test on the dependency null
-        vector, so H'mu + G'lam is unchanged and mu >= 0 survives. That keeps
-        d_p = p_0 - p unperturbed by the drop.
+        """Drop dependent active rows. The multiplier change is transferred to the
+        equality multipliers so stationarity is preserved.
         """
         mu0, lam0 = self.mu.copy(), self.lam.copy()
         tol = 1e-10
@@ -507,8 +495,7 @@ class LocalNode:
         self.mu[~self.act_l] = 0.0
 
         if flag == 1:
-            # both tests can bind at once; they are independent events, so this
-            # is not if/elseif -- otherwise mu(k_d) keeps a -ulp residual
+            # A primal and dual event can occur at the same step.
             did_p = (self.dtau == self.dtau_p) and self.k_p is not None
             did_d = (self.dtau == self.dtau_d) and self.k_d is not None
             if did_p:
@@ -536,7 +523,7 @@ class LocalNode:
         self.tau = 1.0 - self.sigma
 
     def _update_tau(self):
-        # affine in sigma; returns p, g, h bitwise at sigma == 0
+        # Update the homotopy data.
         self.p_tau = self.p + self.sigma * self.d_p
         self.g_tau = self.g + self.sigma * self.d_g
         self.h_tau = self.h + self.sigma * self.d_h
@@ -544,7 +531,7 @@ class LocalNode:
         self._assemble()
 
     def _activate(self, k):
-        """Add row k; if it is dependent on W, exchange it against a blocking row."""
+        """Add row k, exchanging an active row if necessary."""
         QTH = self._apply_reflectors(self.H[k].copy(), forward=True)
         YH, ZH = QTH[:self.r], QTH[self.r:]
 
@@ -579,7 +566,7 @@ class LocalNode:
         self.act_l[k] = True
 
     def _check_curvature(self, k):
-        """Zero curvature after release means the QP is unbounded along p_."""
+        """Check the zero-curvature case after releasing a constraint."""
         W = np.flatnonzero(self.act_l)
         e_A = np.zeros(W.size)
         e_A[W == k] = 1.0
@@ -663,9 +650,7 @@ class CentralNode:
 
         self.slack_rel = 1e-6
         self.sigma_tol = 1e-14
-        # cycle DETECTOR, not a proven bound: with no anti-cycling rule a
-        # zero-step cascade has no a priori length limit, so this only turns a
-        # silent hang into a raised error
+        # Prevent an endless sequence of zero-length steps.
         self.zero_budget = 2 * (self.n + sum(nd.nineq for nd in nodes))
 
         self._initialize()
@@ -771,7 +756,7 @@ class CentralNode:
             self.dtaus[i] = dtau_i
 
     def homotopy_step(self):
-        # dual ratio test on the coupled multipliers
+        # Dual ratio test.
         dnu_s = max(ninf(self.dnu[self.act_c]), TINY)
         ind_nu = (self.dnu < -1e-10 * dnu_s) & self.act_c
         if not ind_nu.any():
@@ -782,7 +767,7 @@ class CentralNode:
             j = int(np.argmin(ratios))
             dtau_d, ka = ratios[j], idx[j]
 
-        # primal ratio test on the inactive coupled rows
+        # Primal ratio test.
         cand = ~self.act_c
         ci = np.flatnonzero(cand)
         den = self.Adx_sum[cand] - self.r_b[cand]
@@ -845,7 +830,7 @@ class CentralNode:
                 self.act_c[ka] = False
                 self.nu[ka] = 0.0
         else:
-            # more than one local node acting invalidates the incremental update
+            # Rebuild if several local active sets change.
             self.change_c = local_acts.size > 1
 
         if self.change_c:
@@ -877,7 +862,7 @@ class CentralNode:
 # -------------------------------------------------------------------- driver
 
 def solve(data, max_iters=10000):
-    """Solve the coupled QP. Returns a dict; check ['status'] before using ['z']."""
+    """Solve the coupled QP."""
     M = len(data["Q"])
     logger = data.get("logger") or Logger()
 
@@ -921,7 +906,7 @@ def solve(data, max_iters=10000):
 
 
 def kkt_residual(data, sol):
-    """Relative KKT residual of the returned point. No reference solver needed."""
+    """Compute a scaled KKT residual."""
     Q = np.block([[data["Q"][i] if i == j else np.zeros((data["Q"][i].shape[0],
                                                          data["Q"][j].shape[1]))
                    for j in range(len(data["Q"]))] for i in range(len(data["Q"]))])
@@ -1055,11 +1040,7 @@ def build_zref(xref, uref):
 
 
 def shift_z(Ad, Bd, Z_prev, leader_p, D_ref, K, u_ref, bounds, R, N, P, nx=3, nu=1):
-    """Time-shift the previous solution and pad the tail with the clipped LQR law.
-
-    The terminal stage has no preimage under the shift, so the pad is the
-    solution of the scalar QP over all six stage-N rows; the multiplier of the
-    binding row is handed back so the dual shift stays consistent.
+    """Shift the previous MPC solution and fill the last stage with the LQR law.
     """
     Cv, Ca = np.array([0, 1, 0]), np.array([0, 0, 1])
     Reff = float((R + Bd.T @ P @ Bd).item())
@@ -1259,7 +1240,7 @@ def run_platoon(n_iter=20, N=20, M=5, Ts=1.0, verbose=True):
 
 
 def plot_run(out, path=None):
-    """Closed-loop trajectories, inter-vehicle gaps, iterations and traffic."""
+    """Plot the closed-loop results."""
     import matplotlib
     if path:
         matplotlib.use("Agg")
