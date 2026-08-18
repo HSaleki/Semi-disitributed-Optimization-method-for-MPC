@@ -5,6 +5,9 @@ nodes. Coupling is eliminated by a Schur complement assembled from local contrib
 active set is traced by a homotopy in $\sigma$ that reaches the original problem data exactly at
 $\sigma = 0$.
 
+This method is especially suited for MPC problems as we use previous solution after applying the input 
+and warm the new iteration of problem ehich results in a quick 1 iteration of QP solving.
+
 The same solver is provided in three languages. The MATLAB implementation is the reference; the
 Python and C++ versions are ports of it.
 
@@ -26,7 +29,7 @@ constraints that couples consecutive agents.
 ## Problem class
 
 $$
-\min_{z_1,\dots,z_M} \; \sum_{i=1}^{M} \tfrac12 z_i^\top Q_i z_i + p_i^\top z_i
+\min_{z_1,\dots,z_M} \; \sum_{i=1}^{M} \frac12 z_i^\top Q_i z_i + p_i^\top z_i
 \qquad\text{s.t.}\qquad
 G_i z_i = g_i,\quad H_i z_i \le h_i,\quad \sum_{i=1}^{M} A_i z_i \le b
 $$
