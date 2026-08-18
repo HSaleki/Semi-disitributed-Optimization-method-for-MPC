@@ -165,11 +165,6 @@ the exact call.
 
 ## Known limitations
 
-- **No proven anti-cycling rule.** The zero-step counter is a cycle *detector* that converts a
-  silent hang into a raised error, not a bound on cascade length.
-- **Conditioning with the horizon.** For the triple integrator the reduced Hessian conditioning
-  grows roughly as $\kappa(S) \propto N^6$; long horizons want a deviation-coordinate or
-  prestabilized formulation rather than tolerance tuning.
 - **Degenerate data.** In the example $D_{\text{ref}} = D_{\text{hard}}$ puts the unconstrained
   minimizer exactly on all $MN$ coupling boundaries, making every coupled row weakly active and the
   ratio tests degenerate. Keep $D_{\text{ref}} > D_{\text{hard}}$.
