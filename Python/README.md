@@ -79,28 +79,3 @@ rho = kkt_residual(data, sol)
 `data` keys: `Q`, `p`, `G`, `g`, `H`, `h`, `A` (lists, per agent), `b`, `z0`,
 `loc_active`, `loc_dual`, `coup_active`, `coup_dual`. All `A_i` must share one row
 space — row `k` of every `A_i` refers to the same coupled constraint.
-
-## Known differences from the MATLAB version
-
-Both are deliberate, and both are fixes rather than translations:
-
-1. `solve()` returns a `status` field and sets `z = None` on non-convergence. The
-   MATLAB driver returns silently with empty cells, which the caller can mistake
-   for a solution.
-2. `send_change` logs the actual `dS`/`drho` payload. The MATLAB version logs
-   `S_i`/`rho_i` at that call site — same element count, wrong array.
-
-Consequently the communication totals are **not** comparable across the two
-implementations: here both ends of every channel are logged, so central and local
-totals agree by construction, whereas in MATLAB several channels are logged on one
-side only.
-
-## Not yet done
-
-- No iterate-by-iterate comparison against the MATLAB reference.
-- No test suite; correctness is currently checked only by `rho` and by a handful
-  of random problems in `_random_problem`.
-- `LDLSolve` refactors the reduced Hessian from scratch on every active-set
-  change; the incremental QR update path from the MATLAB version is not ported.
-- Long horizons are untested here. The conditioning growth of the reduced Hessian
-  with `N` applies to this implementation exactly as it does to the MATLAB one.
