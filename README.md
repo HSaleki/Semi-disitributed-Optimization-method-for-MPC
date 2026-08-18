@@ -191,6 +191,3 @@ the messaging methods with a transport layer; the algorithm is synchronous.
 }
 ```
 
-## License
-
-See [`LICENSE`](LICENSE).
