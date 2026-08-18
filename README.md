@@ -140,6 +140,8 @@ $$
 \}
 $$
 
+These are the relative stationarity residual, primal feasibility of the equalities, primal feasibility of the inequalities, dual feasibility, and complementarity
+
 Iteration counts are reported against the warm-start lower bound
 $k_{\min} = |W_{\text{warm}} \oplus W^\star|$: each outer iteration changes at most one row, so
 $K \ge k_{\min}$ always, and $K - k_{\min}$ is the quantity worth minimizing. On the platoon
