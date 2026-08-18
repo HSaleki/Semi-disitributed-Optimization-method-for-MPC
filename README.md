@@ -131,7 +131,7 @@ active coupled rows, then the number of doubles crossing each interface.
 `rho` is the one number that stands alone — it certifies the returned point with no reference solver:
 
 $$
-\rho = \max\left\{
+\rho = \max \left\{
 \frac{\|Qz+p+G^\top\lambda+H^\top\mu+A^\top\nu\|_\infty}{\max(1,\|p\|_\infty)},\;
 \frac{\|Gz-g\|_\infty}{\max(1,\|g\|_\infty)},\;
 \frac{[\max r]_+}{s_p},\;
