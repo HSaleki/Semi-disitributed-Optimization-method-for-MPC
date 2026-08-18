@@ -49,7 +49,8 @@ s_{Y_i} = T_i^{-\top} r_{gh,i},
 \qquad
 \bar s_{Z_i} = (Z_i^\top Q_i Z_i)^{-1}\!\left(Z_i^\top r_{p,i} - Z_i^\top Q_i Y_i s_{Y_i}\right),
 \qquad
-\Delta \bar x_i = Q_i^{\text{orth}} \begin{bmatrix} s_{Y_i} \\ \bar s_{Z_i}\end{bmatrix}.
+\Delta \bar x_i = Q_i^{\text{orth}} \begin{bmatrix} s_{Y_i} \\
+                                                    \bar s_{Z_i}\end{bmatrix}.
 $$
 
 **Coupling (Schur complement).** Each agent forms, from the same factorization,
