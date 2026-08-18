@@ -177,16 +177,4 @@ array elements that is communicated between nodes. What the code demonstrates is
 each agent reveals only $(S_i, \rho_i, A_i\Delta x_i, \Delta\tau_i)$, never its cost or private
 constraints — and the resulting $\mathcal{O}(Mm^2)$ message volume. 
 
-## Citation
-
-<!-- Fill in before publishing. -->
-
-```bibtex
-@misc{distributed-mpc-qp,
-  author = {},
-  title  = {Distributed Active-Set QP Solver},
-  year   = {2026},
-  url    = {}
-}
-```
 
