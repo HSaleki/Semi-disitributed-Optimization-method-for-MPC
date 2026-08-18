@@ -12,8 +12,8 @@ Single file, `dmpc.py`. Requires `numpy` and `scipy`; `matplotlib` only for the 
 
 ```bash
 python3 dmpc.py --help          # all options
-python3 dmpc.py                 # 10 closed-loop steps, then plots
-python3 dmpc.py 50              # 50 steps
+python3 dmpc.py                 # 50 closed-loop steps, then plots
+python3 dmpc.py 70              # 70 steps
 python3 dmpc.py 25 -N 30 -M 8   # horizon 30, eight followers
 python3 dmpc.py 25 --save       # write platoon.png instead of opening a window
 python3 dmpc.py 25 --no-plot --quiet
