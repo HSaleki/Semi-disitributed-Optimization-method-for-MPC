@@ -1,3 +1,9 @@
+# MATLAB Implementation — Work in Progress
+
+**Status: work in progress.** This directory contains the MATLAB
+implementation of the semi-distributed optimization solver and serves as the
+current development baseline for the project.
+
 # Distributed Active-Set QP Solver
 
 A primal active-set solver for coupled convex QPs, split across one central node and $M$ local
