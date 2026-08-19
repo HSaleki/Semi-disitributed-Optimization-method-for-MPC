@@ -57,9 +57,9 @@ The problem includes:
 
 The spacing constraints are
 
-\[
+$$
 p_i(k)-p_{i-1}(k) \leq -D_{\mathrm{hard}},
-\]
+$$
 
 which creates the coupling between the local QPs.
 
