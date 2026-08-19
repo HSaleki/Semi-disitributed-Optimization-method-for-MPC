@@ -193,7 +193,7 @@ converges in one.
 ## Cross-implementation check
 
 The MATLAB, Python and C++ versions agree on iteration counts and communication volume on the
-platoon benchmark (25 steps: 193 iterations cold, one per step warm, identical traffic).
+platoon benchmark.
 They can differ by an iteration or two on steps where the ratio test has a tie, because the
 underlying LDL / QR factorizations break ties differently across libraries (work in progress). 
 
