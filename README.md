@@ -183,7 +183,8 @@ The solver reports a relative KKT residual for the returned solution:
 
 $$
 \rho =
-\max\left\{
+\max
+\left\{
 \frac{\|Qz+p+G^\top\lambda+H^\top\mu+A^\top\nu\|_\infty}
 {\max(1,\|p\|_\infty)},
 \frac{\|Gz-g\|_\infty}{\max(1,\|g\|_\infty)},
