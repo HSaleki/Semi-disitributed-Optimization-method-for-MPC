@@ -17,7 +17,7 @@ Python and C++ versions are ports of it.
 | Python | [`python/`](python/) | port, work in progress | `numpy`, `scipy`, `matplotlib` |
 | C++ | [`cpp/`](cpp/) | port, early work in progress | a C++17 compiler, [Eigen 3](https://eigen.tumblr.com) |
 
-> > **Current status:** The Python and C++ ports are still being validated against the MATLAB implementation. They run on the included platoon example. There is currently no automated test suite.
+>  **Current status:** The Python and C++ ports are still being validated against the MATLAB implementation. They run on the included platoon example. There is currently no automated test suite.
 
 
 The bundled example is a vehicle-platoon MPC problem: $M$ followers, triple-integrator dynamics,
