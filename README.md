@@ -159,36 +159,54 @@ python plot_csv.py run.csv
 
 Each subfolder has its own README with the details.
 
-## What the example reports
+## Example Output
 
-One line per closed-loop step, in all three:
+A typical solver output contains one line per closed-loop MPC step:
 
+```text
+t=  0  K= 193  rho=2.572e-15  |A_c|=  1  central= 197406  local= 197406
 ```
-t=  0  K= 193  rho=2.572e-15  |A_c|=  1  central= 197406  local=  197406
-```
 
-`t` step index, `K` outer iterations, `rho` the relative KKT residual of the returned point, `|A_c|`
-active coupled rows, then the number of doubles crossing each interface.
+where:
 
-`rho` is the one number that stands alone — it certifies the returned point with no reference solver:
+- `t` is the MPC step;
+- `K` is the number of active-set iterations;
+- `rho` is the relative KKT residual;
+- `|A_c|` is the number of active coupled constraints;
+- `central` and `local` are the numbers of scalar values transferred through the corresponding interfaces.
 
-$$
-\rho = \max \{
-\frac{\|Qz+p+G^\top\lambda+H^\top\mu+A^\top\nu\|_\infty}{\max(1,\|p\|_\infty)},\;
-\frac{\|Gz-g\|_\infty}{\max(1,\|g\|_\infty)},\;
-\frac{[\max r]_+}{s_p},\;
-\frac{[-\min y]_+}{s_d},\;
-\frac{\|y \odot r\|_\infty}{s_p s_d}
-\}
-$$
+The exact iteration count can differ between implementations when ratio tests encounter ties.
 
-These are the relative stationarity residual, primal feasibility of the equalities, primal feasibility of the inequalities, dual feasibility, and complementarity
+## KKT Residual
 
-Iteration counts are reported against the warm-start lower bound
-$k_{\min} = |W_{\text{warm}} \oplus W^\star|$: each outer iteration changes at most one row, so
-$K \ge k_{\min}$ always, and $K - k_{\min}$ is the quantity worth minimizing. On the platoon
-benchmark the cold start costs order $10^2$ iterations and every subsequent warm-started step
-converges in one.
+The solver reports a relative KKT residual for the returned solution:
+
+\[
+\rho =
+\max\left\{
+\frac{\|Qz+p+G^\top\lambda+H^\top\mu+A^\top\nu\|_\infty}
+{\max(1,\|p\|_\infty)},
+\frac{\|Gz-g\|_\infty}{\max(1,\|g\|_\infty)},
+\frac{[\max r]_+}{s_p},
+\frac{[-\min y]_+}{s_d},
+\frac{\|y\odot r\|_\infty}{s_p s_d}
+\right\}.
+\]
+
+This combines stationarity, equality feasibility, inequality feasibility, dual feasibility and complementarity.
+
+Unlike an iteration count, the residual does not require a reference implementation. It directly measures the quality of the returned QP solution.
+
+## Warm Start
+
+The MPC example uses the previous solution as the initial point for the next QP.
+
+The primal solution is shifted by one prediction step. The terminal part is filled using a clipped LQR control. The local active sets and dual variables are shifted as well.
+
+For the included platoon benchmark, the initial cold solve requires around 193 iterations, while the subsequent warm-started problems converge in one iteration.
+
+This behaviour is important for the intended MPC application: consecutive QPs differ mainly because the measured state and reference move forward, so most of the previous active set remains useful for the next problem.
+
 
 ## Cross-implementation check
 
