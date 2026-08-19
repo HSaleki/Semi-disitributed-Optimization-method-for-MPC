@@ -26,12 +26,12 @@ The repository includes a closed-loop MPC simulation with one leader and \(M\) f
 
 Each vehicle is modelled as a triple integrator,
 
-\[
+$$
 x =
 \begin{bmatrix}
 p & v & a
-\end{bmatrix}^{\mathsf T},
-\]
+\end{bmatrix}^{\mathsf T}
+$$
 
 with jerk as the control input. Each follower tries to maintain a desired distance from the vehicle ahead while tracking the leader's velocity.
 
