@@ -133,9 +133,6 @@ for time = 1:nIter
     problem_structure.A = A_coup;
     problem_structure.b = b_coup;
 
-    warm_mode = 'noshift';        % 'noshift' | 'shift'
-
-
     if time >1 
         [problem_structure.z0, sat_, pad_, act_N_, mu_N_, lamN_corr_] = shift_Z(A_d, B_d, Zs{time-1}, leader_p, D_ref, K_lqr, nx, nu, u_ref, ...
             bounds, R, N, P_lqr);        
