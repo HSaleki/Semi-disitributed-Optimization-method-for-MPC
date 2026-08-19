@@ -197,13 +197,34 @@ platoon benchmark (25 steps: 193 iterations cold, one per step warm, identical t
 They can differ by an iteration or two on steps where the ratio test has a tie, because the
 underlying LDL / QR factorizations break ties differently across libraries (work in progress). 
 
-## Solver interface
+## Solver Interface
 
-Pass per-agent data and a warm start; get back the primal, the duals, the active sets and the
-iteration count. All $A_i$ must share one row space — row $k$ of every $A_i$ refers to the same
-coupled constraint — and $Q_i \succ 0$. A cold start is legal (arbitrary $z_0$, empty active sets,
-zero duals); the homotopy absorbs it at the cost of more iterations. See any subfolder README for
-the exact call.
+The solver takes the local QP data and a warm start and returns:
+
+- the primal solution;
+- local and coupled dual variables;
+- local and coupled active sets;
+- the number of active-set iterations;
+- convergence information.
+
+The coupled matrices \(A_i\) must use the same row ordering: row \(k\) of every \(A_i\) must correspond to the same global coupled constraint.
+
+A cold start is also possible by providing an initial point, empty active sets and zero multipliers. The homotopy procedure can then move the point to the solution, although this normally requires more iterations.
+
+See the README in each implementation directory for the exact interface.
+
+## Communication
+
+The current implementation is intended to represent a semi-distributed architecture.
+
+Local nodes keep their own QP data and perform the main KKT calculations. The central node handles the coupled part of the problem.
+
+For each active coupled constraint set, the local nodes send the quantities required to assemble the Schur complement and the coupling residual. The central node then returns the coupled multiplier update.
+
+The code includes a transaction logger that counts the scalar values exchanged between local and central nodes. This allows the platoon example to report communication volume alongside solver iterations.
+
+The current code does not simulate network delays, packet loss or asynchronous communication.
+
 
 ## Known limitations
 
