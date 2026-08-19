@@ -183,14 +183,14 @@ The solver reports a relative KKT residual for the returned solution:
 
 $$
 \rho =
-\max\Bigg\{
+\max\left[
 \frac{\|Qz+p+G^\top\lambda+H^\top\mu+A^\top\nu\|_\infty}
 {\max(1,\|p\|_\infty)},
 \frac{\|Gz-g\|_\infty}{\max(1,\|g\|_\infty)},
 \frac{[\max r]_+}{s_p},
 \frac{[-\min y]_+}{s_d},
 \frac{\|y\odot r\|_\infty}{s_p s_d}
-\Bigg\}
+\right]
 $$
 
 This combines stationarity, equality feasibility, inequality feasibility, dual feasibility and complementarity.
