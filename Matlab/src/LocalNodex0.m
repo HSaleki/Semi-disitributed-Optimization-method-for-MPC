@@ -27,7 +27,6 @@ classdef LocalNodex0 < handle
         delta_mu                % Lagrange multipliers change for inequality constraints
         nu                      % Lagrange multipliers for coupled inequality constraints
         delta_nu                % Lagrange multipliers change for coupled inequality constraints
-        %delta_nu_bar
         is_active_l             % Active/inactive set for local inequality constraint
         is_active_c             % Active/inactive set for coupled inequality constraint 
         tau                     % Homotopy parameter   
@@ -36,7 +35,6 @@ classdef LocalNodex0 < handle
         d_p
         d_g
         d_h
-        % r                       % Perturbation matrix
         h_tau                   % Inequality bound at tau
         p_tau                   % Gradeitn vector at tau
         g_tau                   % Equality constraint at tau    
@@ -89,29 +87,19 @@ classdef LocalNodex0 < handle
         rho_i
         delta_S_i
         delta_rho_i
-        Zg                      % [DEP] null(G), cached  (nx x m)
-        Hz                      % [DEP] H*Zg, reduced inequality rows (nineq_l x m)
-        GGt                     % [DEP] G*G', for exact lambda compensation on a drop
-        slack_rel               % warm-start slack, RELATIVE to row scale.
-                                %   h_0,k = H_k x + slack_rel*max(1,|h_k|,|H_k x|)
-                                % Sets WHERE on the path a warm-start-tight row is
-                                % resolved:  t*_k = s_k/(s_k + H_k dx).
-                                %   slack_rel >> |H dx|/scale  ->  t* -> 1 (late)
-                                %   slack_rel << |H dx|/scale  ->  t* -> 0 (early)
-                                % Late is better on long/cold paths: the row is
-                                % picked up near the optimum instead of being
-                                % activated at a bad point and dropped again.
+        Zg                      % null(G), cached  (nx x m)
+        Hz                      % H*Zg, reduced inequality rows (nineq_l x m)
+        GGt                     % G*G', for exact lambda compensation on a drop
+        slack_rel               % warm-start slack.
 
     end
     
-    %LocalNodex0(i, Q{i}, p{i}, G{i}, g{i}, H{i}, h{i}, A{i}, x0{i}, loc_activeset{i}, loc_dual{i}, coup_dual, coup_activeset);
     methods
         
         function obj = LocalNodex0(id, B, p, G, g, H, h, A, x0, loc_dual, loc_activeset, coup_dual, coup_activeset)
             obj.id = id;
             obj.B = B;
             obj.nx = size(B,1);
-            %obj.B = obj.B + 1e-8*diag(Q);        % Small regulaization for numerical stability
             obj.p = p;
             obj.G = G;
             obj.g = g;
@@ -151,13 +139,8 @@ classdef LocalNodex0 < handle
             obj.h_0 = zeros(obj.nineq_l,1);
             obj.change_l = false;
             obj.change_c = false;
-            obj.slack_rel = 1e-6;   % = sqrt(activity tol): smallest slack that
-                                    % keeps a near-boundary row strictly inactive
-                                    % at sigma = 1 without inflating ||d_h||.
-            % obj.initial_lineardependence();
+            obj.slack_rel = 1e-6;   
             obj.Initialize();
-            % obj.updatetauvalues();
-            % obj.assembleKKT();
         end
 
 
@@ -165,10 +148,6 @@ classdef LocalNodex0 < handle
 
             obj.g_0 = obj.G * obj.x;
             Hx = obj.H * obj.x;
-
-
-            
-
 
             obj.h_0 = obj.h + max(Hx - obj.h, 0);
             obj.h_0(obj.is_active_l) = Hx(obj.is_active_l);
@@ -279,7 +258,6 @@ classdef LocalNodex0 < handle
 
             if any(obj.is_active_c)
                 obj.ZAT_i = obj.Zi' * obj.A(obj.is_active_c,:)';
-                % obj.ZAT_i = obj.QA(obj.r_+1:end,:); 
 
                 t1 = obj.Li \ obj.ZAT_i;
                 t2 = obj.Di \t1;
@@ -288,12 +266,9 @@ classdef LocalNodex0 < handle
                 obj.S_i = obj.ZAT_i' * obj.Mi;
 
                 obj.rho_i = obj.A(obj.is_active_c,:) * obj.dxbar_i;
-                % need comunicate and get \delta nu
             else
                 obj.s_Zi = obj.s_Zi_bar;
                 
-                % obj.Yr_pi = obj.QTr(1:obj.r_);
-
                 obj.delta_x = obj.dxbar_i;
                 obj.YBZs_Zi = obj.ZBYi'* obj.s_Zi;
                 rhs_lm = obj.Yr_pi - obj.YBYs_Yi - obj.YBZs_Zi;
@@ -324,12 +299,10 @@ classdef LocalNodex0 < handle
 
 
         function obj = updatetauvalues(obj)
-            % Affine in sigma. At sigma == 0 this returns p, g, h bitwise.
             obj.p_tau = obj.p + obj.sigma * obj.d_p;
             obj.g_tau = obj.g + obj.sigma * obj.d_g;
             obj.h_tau = obj.h + obj.sigma * obj.d_h;
         
-            % obj.flag = (obj.sigma == 0);
             obj.flag = (obj.sigma < 1e-14);
 
             obj.assemblematrices();
@@ -357,7 +330,7 @@ classdef LocalNodex0 < handle
                         error('node %d: equality block G is rank deficient (r_=%d, neq_l=%d)', ...
                               obj.id, obj.r_, obj.neq_l);
                     end
-                    % [FIX DEP] same ratio-test drop as in Initialize: choose the
+                    % same ratio-test drop as in Initialize: choose the
                     % leaving row so that H'mu + G'lambda is unchanged.
 
                     [obj.is_active_l, obj.mu, obj.lambda, ~, ind_dropped] = ...
@@ -420,7 +393,6 @@ classdef LocalNodex0 < handle
 
                     obj.ZAT_i = obj.Zi' * obj.A(obj.is_active_c,:)';
                 end
-                % obj.ZAT_i = obj.QA(obj.r_+1:end,:);
 
                 t1 = obj.Li \ obj.ZAT_i;
                 t2 = obj.Di \t1;
@@ -480,7 +452,6 @@ classdef LocalNodex0 < handle
 
             obj.YBZs_Zi = obj.ZBYi' * obj.s_Zi;
 
-            % obj.YAT_i = obj.QA(1:obj.r_,:); 
             obj.YAT_i = obj.Yi' * obj.A(obj.is_active_c,:)';
             
             rhs_lm = obj.Yr_pi - obj.YBYs_Yi - obj.YBZs_Zi - obj.YAT_i * obj.delta_nu(obj.is_active_c);  
@@ -489,8 +460,6 @@ classdef LocalNodex0 < handle
             delta_mu_temp = delta_lm(obj.neq_l+1:end);
             obj.delta_mu(:) = 0;
             obj.delta_mu(obj.is_active_l) = delta_mu_temp;
-
-
 
             obj.homotopystep();            
         end
@@ -615,8 +584,8 @@ classdef LocalNodex0 < handle
             obj.mu(~obj.is_active_l) = 0;
         
             if flag == 1
-                % Both tests can bind simultaneously (delta_tau_p == delta_tau_d).
-                % They must be handled as two independent events, not if/elseif,
+                % If tests bind simultaneously (delta_tau_p == delta_tau_d).
+                % They must be handled as two independent events,
                 % otherwise mu(k_d) keeps a -ulp residual and is exported.
                 did_p = (obj.delta_tau == obj.delta_tau_p) && ~isnan(obj.k_p);
                 did_d = (obj.delta_tau == obj.delta_tau_d) && ~isnan(obj.k_d);
@@ -783,20 +752,19 @@ classdef LocalNodex0 < handle
 
 
         function [act, mu, lambda, nd, dropped] = resolveDependency(obj, act, mu, lambda)
-        % [FIX DEP] Remove rows until Hz(act,:) has full row rank. The leaving
+        % Remove rows until Hz(act,:) has full row rank. The leaving
         % row is chosen by a dual ratio test on the dependency null vector, so
         % that  H'*mu + G'*lambda  is left UNCHANGED and mu >= 0 is preserved.
-        % Consequence: d_p = p_0 - p is NOT perturbed by the drop (jump == 0),
-        % and a member of the dependent group carrying mu = 0 (a B17 row) is
-        % removed for free.
+        %  d_p = p_0 - p is NOT perturbed by the drop,
+        % and a member of the dependent group carrying mu = 0 is removed for free.
         %
-        % Rank of A_loc(W,:) modulo range(G') equals rank of Hz(W,:), so the
-        % dependency is detected on the reduced rows Hz = H*null(G).
+        % CQ test on reduced rows: rank([G; H(W,:)]) = rank(G) + rank(Hz(W,:)),
+        % Hz = H*null(G). So [G; H(W,:)] has full row rank iff Hz(W,:) does.
             nd = 0;  dropped = zeros(0,1);  mu0 = mu;  lam0 = lambda;
             tol = 1e-10;
 
-            % rows with no component outside range(G') are unconditionally
-            % redundant: H_i is a combination of the equality rows.
+            % Hz_i = 0  =>  H_i' in range(G'): row i is implied by the equality
+            % rows alone, redundant for every W. Strip these first.
             nrm  = vecnorm(obj.Hz, 2, 2);
             dead = act & (nrm <= tol*max(max(nrm), realmin));
             if any(dead)
@@ -819,7 +787,7 @@ classdef LocalNodex0 < handle
 
                 c = D(:,1)./s;                        % Hw.'*c = 0 exactly
 
-                % both +c and -c are legal directions; take the feasible one
+                % both +c and -c are valid; take the feasible one
                 % with the smaller dual step.
                 [tp, jp] = LocalNodex0.dualRatio(mu(W),  c);
                 [tm, jm] = LocalNodex0.dualRatio(mu(W), -c);
@@ -842,7 +810,6 @@ classdef LocalNodex0 < handle
 
             if nd > 0
                 % Hz(W,:)'*(mu-mu0) = 0  =>  H'*(mu-mu0) in range(G'),
-                % so this compensation is exact, not least squares:
                 %   G'*dlambda = -H'*dmu,  dlambda = -(G G')^{-1} G H' dmu.
                 if ~isempty(obj.G)
                     r      = obj.H.' * (mu - mu0);
@@ -864,7 +831,6 @@ classdef LocalNodex0 < handle
 
 
         function dual_out = getdual(obj)
-            % dual_out = [obj.lambda; obj.mu];
             mu_out = obj.mu;
             mu_out(~obj.is_active_l) = 0;
             mu_out(mu_out < 0) = 0;
@@ -873,16 +839,13 @@ classdef LocalNodex0 < handle
 
         function dropcoupled(obj, dropped)
             obj.is_active_c(dropped) = false;
-            obj.nu(dropped)       = 0;      % [FIX B10]
-            obj.delta_nu(dropped) = 0;      % [FIX B10]
+            obj.nu(dropped)       = 0;      
+            obj.delta_nu(dropped) = 0;     
             obj.change_c = true;
             obj.assemblematrices();
         end   
 
         function active_out = getactiveset(obj)
-            % Export W as held. A tight row with mu = 0 is a legitimate member of
-            % a degenerate working set; filtering it forces a re-activation next
-            % timestep and inflates |W_warm  xor  W*|.
             active_out = obj.is_active_l;
         end
 
@@ -904,9 +867,6 @@ classdef LocalNodex0 < handle
     methods (Static)
 
         function [t, j] = dualRatio(muW, c)
-        % t = min_{j: c_j>0} muW(j)/c(j).  inf if c has no positive
-        % entry, i.e. mu_W - t*c cannot be driven to a zero component while
-        % keeping mu >= 0 along this direction.
             idx = find(c > 0);
             if isempty(idx)
                 t = inf;  j = 0;  return
