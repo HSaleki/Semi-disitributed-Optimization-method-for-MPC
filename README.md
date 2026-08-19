@@ -20,9 +20,53 @@ Python and C++ versions are ports of it.
 >  **Current status:** The Python and C++ ports are still being validated against the MATLAB implementation. They run on the included platoon example. There is currently no automated test suite.
 
 
-The bundled example is a vehicle-platoon MPC problem: $M$ followers, triple-integrator dynamics,
-box constraints on jerk / velocity / acceleration, and a chain of inter-vehicle spacing
-constraints that couples consecutive agents.
+## Example: Vehicle Platoon MPC
+
+The repository includes a closed-loop MPC simulation with one leader and \(M\) follower vehicles.
+
+Each vehicle is modelled as a triple integrator,
+
+\[
+x =
+\begin{bmatrix}
+p & v & a
+\end{bmatrix}^{\mathsf T},
+\]
+
+with jerk as the control input. Each follower tries to maintain a desired distance from the vehicle ahead while tracking the leader's velocity.
+
+The default example uses:
+
+| Parameter | Value |
+|---|---:|
+| Followers | 5 |
+| Prediction horizon | 20 |
+| Sampling time | 1 s |
+| Desired velocity | 20 m/s |
+| Desired spacing | 35 m |
+| Minimum spacing | 30 m |
+| Vehicle model | Triple integrator |
+| Control input | Jerk |
+
+The problem includes:
+
+- jerk, velocity and acceleration bounds;
+- local MPC constraints for each vehicle;
+- coupled spacing constraints between consecutive vehicles;
+- a closed-loop simulation in which the first MPC input is applied at every step.
+
+The spacing constraints are
+
+\[
+p_i(k)-p_{i-1}(k) \leq -D_{\mathrm{hard}},
+\]
+
+which creates the coupling between the local QPs.
+
+The previous MPC solution is shifted and used to warm-start the next problem. This is the main reason the solver can reduce the number of active-set iterations substantially after the initial solve.
+
+The example is also used to compare the three implementations. The solver output records the number of active-set iterations, the KKT residual, the number of active coupled constraints and the amount of data exchanged between the local and central nodes.
+
 
 ## Problem class
 
