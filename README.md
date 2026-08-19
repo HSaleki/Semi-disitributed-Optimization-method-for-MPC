@@ -17,10 +17,8 @@ Python and C++ versions are ports of it.
 | Python | [`python/`](python/) | port, work in progress | `numpy`, `scipy`, `matplotlib` |
 | C++ | [`cpp/`](cpp/) | port, early work in progress | a C++17 compiler, [Eigen 3](https://eigen.tumblr.com) |
 
-> **The ports are work in progress.** They compile, run, and reproduce the reference behaviour on
-> the platoon benchmark and on random coupled QPs, but they have not been checked against the
-> MATLAB implementation iterate by iterate, have no test suite, and their interfaces will change.
-> For anything you intend to cite, use the MATLAB version.
+> > **Current status:** The Python and C++ ports are still being validated against the MATLAB implementation. They run on the included platoon example. There is currently no automated test suite.
+
 
 The bundled example is a vehicle-platoon MPC problem: $M$ followers, triple-integrator dynamics,
 box constraints on jerk / velocity / acceleration, and a chain of inter-vehicle spacing
