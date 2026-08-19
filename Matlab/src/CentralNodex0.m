@@ -32,15 +32,10 @@ classdef CentralNodex0 < handle
         rho_sum
         r_b
         change_c
-        % change_l
         sigma_tol               % sigma below which the path is closed exactly
         n_zero_c                % consecutive zero-length step counter
-        n_zero_budget           % cycle DETECTOR, not a proven bound: with no
-                                % anti-cycling rule in place a zero-step cascade
-                                % has no a priori length limit, so this only
-                                % converts a silent hang into a raised error.
-        slack_rel               % warm-start slack relative to row scale;
-                                % controls where on the path tight rows are resolved
+        n_zero_budget           % cycle DETECTOR.
+        slack_rel               % warm-start slack relative to row scale
     end
     
     methods
@@ -50,7 +45,6 @@ classdef CentralNodex0 < handle
             obj.n = length(obj.b);
             obj.nu = coup_dual;                                     % Initialize inequality multipliers
             obj.delta_nu = zeros(obj.n,1);                          % Initialize inequality multipliers change
-            % obj.delta_nu_bar = zeros(obj.n,1);
             obj.is_active_c = false(obj.n, 1);
             obj.is_active_c(coup_activeset) = true;                           
             obj.tau = 0;
@@ -69,11 +63,11 @@ classdef CentralNodex0 < handle
             obj.Adelta_x_sum = zeros(obj.n,1);
             obj.S_sum = zeros(nnz(obj.is_active_c));
             obj.rho_sum = zeros(nnz(obj.is_active_c),1);
-            obj.slack_rel = 1e-6;    % = sqrt(activity tol); must precede Initialize
+            obj.slack_rel = 1e-6;   
             obj.Initialize();
-            obj.sigma_tol = 1e-14;                   % matches the exit test below
+            obj.sigma_tol = 1e-14;                   
             obj.n_zero_c = 0;
-            obj.n_zero_budget = 2*( obj.n + ...      % [FIX B17]
+            obj.n_zero_budget = 2*( obj.n + ...     
                 sum(cellfun(@(nd) numel(nd.h), obj.nodes)) );
         end
 
@@ -96,9 +90,7 @@ classdef CentralNodex0 < handle
 
             % ---- purge weakly active coupled rows ----
             viol  = obj.Ax_sum - obj.b;
-            % purge = obj.is_active_c & (obj.nu <= 1e-10*max(norm(obj.nu,inf),1)) ...
-            %                        & (viol < 1e-9*max(abs(obj.b),1));
-            sc_c  = max(abs(obj.Ax_sum - obj.b), 1);          % or just  D_hard*ones(...)
+            sc_c  = max(abs(obj.Ax_sum - obj.b), 1);          
             nu_s  = max(norm(obj.nu, inf), 1);
             purge = obj.is_active_c & (obj.nu <= 1e-12*nu_s) & (viol < -1e-10*sc_c);
 
@@ -112,7 +104,6 @@ classdef CentralNodex0 < handle
             
             obj.nu(~obj.is_active_c) = 0;
             
-            % [FIX B2/B15] slack RELATIVE to the data scale (was an absolute 1e4).
             eps_slack = 1e-10;          % numerical boundary tolerance
 
             resAx = obj.Ax_sum - obj.b_0;
@@ -132,7 +123,6 @@ classdef CentralNodex0 < handle
         
         function obj = updatetauvalues(obj)
             obj.b_tau = obj.b - obj.sigma * obj.r_b;     % == b bitwise at sigma == 0
-            % obj.flagc = (obj.sigma == 0);
             obj.flagc = (obj.sigma < 1e-14);
         end
 
@@ -203,8 +193,8 @@ classdef CentralNodex0 < handle
         
             obj.change_c = true;
             nA = nnz(obj.is_active_c);
-            obj.S_sum   = zeros(nA);          % <-- added
-            obj.rho_sum = zeros(nA,1);        % <-- added
+            obj.S_sum   = zeros(nA);          
+            obj.rho_sum = zeros(nA,1);        
         end
         
 
@@ -301,7 +291,7 @@ classdef CentralNodex0 < handle
                 actual_step = min(obj.delta_tau, obj.sigma);
             end
 
-            % [FIX B17] invariant: the step never exceeds the ratio-test bound.
+            % the step never exceeds the ratio-test bound.
             assert(actual_step <= obj.delta_tau + 1e-12*max(obj.sigma,1) || ...
                    obj.sigma <= obj.sigma_tol, ...
                    'central: step %.6e exceeds ratio bound %.6e at sigma %.6e', ...
@@ -315,7 +305,7 @@ classdef CentralNodex0 < handle
             snap = obj.is_active_c & (abs(obj.nu) <= 4*eps*max(nu_s,1));
             obj.nu(snap) = 0;
 
-            obj.sigma  = obj.sigma - actual_step;            % == 0 bitwise on terminal step
+            obj.sigma  = obj.sigma - actual_step;           
             obj.tau    = 1 - obj.sigma;
             if obj.sigma < 1e-14
                 obj.exit_flag = 1;
@@ -327,10 +317,6 @@ classdef CentralNodex0 < handle
             end
 
             % --- 4. Active Set Logic ---
-            % [FIX B9] apply ALL events attaining the minimum, not just the first.
-            % tol_tie    = 1e-12 * max(obj.sigma, 1);
-            % tied       = obj.delta_taus <= delta_tau_c + tol_tie;
-            % local_acts = find(tied(1:end-1));
             tol_tie    = 1e-12 * max(obj.sigma, 1);
             tied       = isfinite(obj.delta_taus) & (obj.delta_taus <= delta_tau_c + tol_tie);
             local_acts = find(tied(1:end-1));
@@ -361,7 +347,6 @@ classdef CentralNodex0 < handle
                     obj.nodes{i}.receiveDeltatau(obj.delta_tau, 0, obj.is_active_c);
                 end
             end
-            % obj.tau = obj.tau + obj.delta_tau;
             obj.updatetauvalues();
             exit_flag = obj.exit_flag;
 
@@ -371,11 +356,10 @@ classdef CentralNodex0 < handle
         function dual_out = getdual(obj)
             dual_out = obj.nu;
             dual_out(~obj.is_active_c) = 0;
-            dual_out(dual_out < 0) = 0;          % clamp; magnitude is O(u)
+            dual_out(dual_out < 0) = 0;          
         end
 
         function active_out = getactiveset(obj)
-            % Export W as held (see LocalNodex0.getactiveset).
             active_out = obj.is_active_c;
         end
 
@@ -385,22 +369,5 @@ classdef CentralNodex0 < handle
             residuals = [res_ineq; res_slack];
         end
 
-    end
-end
-
-function x = back_substitute(A, b)
-    % Get the size of the system
-    n = length(b);
-    
-    % Preallocate the solution vector for performance
-    x = zeros(n, 1);
-    
-    % Solve the bottom row first
-    x(n) = b(n) / A(n, n);
-    
-    % Iterate upwards through the matrix
-    for i = n-1:-1:1
-        % A(i, i+1:n) * x(i+1:n) is the vectorized dot product replacing the inner sum
-        x(i) = (b(i) - A(i, i+1:n) * x(i+1:n)) / A(i, i);
     end
 end
